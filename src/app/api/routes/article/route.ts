@@ -12,3 +12,10 @@ export async function POST(req: NextRequest) {
 
   return;
 }
+
+export async function GET() {
+  return NextResponse.json({
+    method: "GET",
+    message: "Hello articles",
+  });
+}

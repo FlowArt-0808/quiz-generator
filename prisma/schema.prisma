@@ -12,8 +12,97 @@ generator client {
 datasource db {
   provider = "postgresql"
 
+}
+
+model User {
+  id  String @id @default(cuid()) 
+clerkId String @unique
+email String @unique
+name String
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+articles Article[]
+quizAttempts QuizAttempt[]
+userScores UserScore[]
+}
 
 
+model Article{
+id String @id @default(cuid())
 
+title String //Article title
+
+content String //Full content
+
+summary String //Short summary
+
+userId String //Foreign key (User)
+
+user User @relation(fields:[userId], references: [id]) //Relation to User
+
+createdAt DateTime @default(now()) //Creation timestamp
+
+updatedAt DateTime @updatedAt //Auto-updated on modification
+
+quizzes Quiz[] //Associated quizzes
+
+}
+
+model Quiz {
+
+  id String @id @default(cuid()) //Unique identifier
+
+  question String //Quiz question
+
+  options String[] //Array of options
+
+  answer String //Correct Answer
+
+  articleId String // Foreign Key (Article)
+
+  article Article @relation(fields: [articleId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt 
+
+  quizAttempts QuizAttempt[] // How many attempts
+
+  userScores UserScore[] //How many scores which the user has
+
+}
+
+model QuizAttempt {
+
+  id String @id @default(cuid())
+
+userId String
+
+user User @relation(fields: [userId], references: [id])
+
+quizId String
+
+quiz Quiz @relation(fields: [quizId], references: [id])
+
+score Int
+
+completedAt DateTime @default(now())
+
+}
+
+model UserScore {
+
+id String @id @default(cuid())
+
+userId String
+
+user User @relation(fields: [userId], references: [id])
+
+quizId String
+
+quiz Quiz @relation(fields: [quizId], references: [id])
+
+score Int
+createdAt DateTime @default(now())
 
 }

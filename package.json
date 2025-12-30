@@ -3,17 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 8888",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 8888",
     "lint": "eslint"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.5",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^6.19.1",
+    "axios": "^1.13.2",
     "env": "^0.0.2",
+    "latest": "^0.2.0",
     "next": "16.1.1",
+    "nodemon": "^3.1.11",
     "prisma": "^6.19.1",
     "react": "19.2.3",
     "react-dom": "19.2.3"

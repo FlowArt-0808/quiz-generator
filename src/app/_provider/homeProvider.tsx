@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 
-type HomeContextType = {};
+import axios from "axios";
+
+type HomeContextType = { getArticleData: () => Promise<void> };
 
 const HomeContext = createContext<HomeContextType | undefined>(undefined);
 
@@ -22,5 +18,25 @@ export const useHomeContext = () => {
 };
 
 export const HomeProvider = ({ children }: { children: ReactNode }) => {
-  return <HomeContext.Provider value={{}}>{children}</HomeContext.Provider>;
+  const getArticleData = async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:8888/api/routes/article"
+      );
+      const data = await response.data;
+      console.log(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    void getArticleData();
+  }, []);
+
+  return (
+    <HomeContext.Provider value={{ getArticleData }}>
+      {children}
+    </HomeContext.Provider>
+  );
 };

@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 
-type QuizContextType = {};
+import axios from "axios";
+
+type QuizContextType = { getQuizData: () => Promise<void> };
 
 const QuizContext = createContext<QuizContextType | undefined>(undefined);
 
@@ -22,5 +18,23 @@ export const useQuizContext = () => {
 };
 
 export const QuizProvider = ({ children }: { children: ReactNode }) => {
-  return <QuizContext.Provider value={{}}>{children}</QuizContext.Provider>;
+  const getQuizData = async () => {
+    try {
+      const response = await axios.get("http://localhost:8888/api/routes/quiz");
+      const data = response.data;
+      console.log(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    void getQuizData();
+  }, []);
+
+  return (
+    <QuizContext.Provider value={{ getQuizData }}>
+      {children}
+    </QuizContext.Provider>
+  );
 };
