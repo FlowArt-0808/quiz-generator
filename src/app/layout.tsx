@@ -9,7 +9,12 @@ import {
 } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Inter } from "next/font/google";
-
+import {
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarInset,
+} from "@/components/ui/sidebar";
+import AppSidebar from "@/components/ui/app-sidebar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,9 +46,11 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body
-          className={`${geistSans.variable} ${geistMono.variable}  ${inter.variable}  antialiased`}
+          className={` ${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased flex flex-col h-screen`}
         >
-          <header className="flex justify-end items-center p-4 gap-4 h-16">
+          <header className="flex justify-end items-center p-4 gap-4 h-16 bg-white border-b flex-shrink-0">
+            <h1>Quiz app</h1>
+            <div className="flex-1" />
             <SignedOut>
               <SignInButton />
               <SignUpButton>
@@ -56,7 +63,10 @@ export default function RootLayout({
               <UserButton />
             </SignedIn>
           </header>
-          {children}
+          <div className="flex flex-1 overflow-hidden">
+            <AppSidebar />
+            <main className="flex-1 p-4 overflow-auto">{children}</main>
+          </div>
         </body>
       </html>
     </ClerkProvider>
