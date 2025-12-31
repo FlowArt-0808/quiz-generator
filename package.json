@@ -15,9 +15,14 @@
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "axios": "^1.13.2",
+    "dotenv": "^17.2.3",
     "env": "^0.0.2",
     "latest": "^0.2.0",
     "next": "16.1.1",
+<<<<<<< HEAD
+=======
+    "nodemon": "^3.1.11",
+>>>>>>> 8fb54b05b7c51bcdac0e17d25cd9deb8136500a4
     "prisma": "^7.2.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
