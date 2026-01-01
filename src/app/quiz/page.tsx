@@ -1,5 +1,9 @@
 const Quiz = () => {
-  return <div>Hello from Quiz</div>;
+  return (
+    <div className="w-full">
+      <div>Yo</div>
+    </div>
+  );
 };
 
 export default Quiz;

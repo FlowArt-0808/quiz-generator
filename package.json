@@ -14,18 +14,20 @@
     "@clerk/nextjs": "^6.36.5",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "axios": "^1.13.2",
+    "class-variance-authority": "^0.7.1",
     "dotenv": "^17.2.3",
     "env": "^0.0.2",
     "latest": "^0.2.0",
+    "lucide-react": "^0.562.0",
     "next": "16.1.1",
-<<<<<<< HEAD
-=======
     "nodemon": "^3.1.11",
->>>>>>> 8fb54b05b7c51bcdac0e17d25cd9deb8136500a4
     "prisma": "^7.2.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
