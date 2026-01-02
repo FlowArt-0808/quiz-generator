@@ -12,10 +12,6 @@ generator client {
 datasource db {
   provider = "postgresql"
 
-<<<<<<< HEAD
-=======
-  
->>>>>>> 8fb54b05b7c51bcdac0e17d25cd9deb8136500a4
 
 }
 

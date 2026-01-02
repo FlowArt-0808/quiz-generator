@@ -9,7 +9,7 @@ import {
 } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Inter } from "next/font/google";
-
+import { HomeProvider } from "./_provider/homeProvider";
 import AppSidebar from "@/app/app-sidebar";
 import "./globals.css";
 
@@ -40,31 +40,32 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body
-          className={` ${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased flex flex-col h-screen`}
-        >
-          <header className="flex justify-end items-center p-4 gap-4 h-16 bg-white border-b flex-shrink-0">
-            <h1>Quiz app</h1>
-            <div className="flex-1" />
-            <SignedOut>
-              <SignInButton />
-              <SignUpButton>
-                <button className="bg-[#6c47ff] text-ceramic-white rounded-full font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 cursor-pointer">
-                  Sign Up
-                </button>
-              </SignUpButton>
-            </SignedOut>
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-          </header>
-          <div className="flex flex-1 overflow-hidden">
-            <AppSidebar />
-            <main className="flex-1 p-4 overflow-auto">{children}</main>
-          </div>
-        </body>
-      </html>
+      <HomeProvider>
+        <html lang="en">
+          <body
+            className={` ${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased flex flex-col h-screen`}
+          >
+            <header className="flex justify-end items-center p-4 gap-4 h-16 bg-white border-b flex-shrink-0">
+              <h1>Quiz app</h1>
+              <div className="flex-1" />
+              <SignedOut>
+                <SignInButton />
+                <SignUpButton>
+                  <button className="bg-[#6c47ff] text-ceramic-white rounded-full font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 cursor-pointer">
+                    Sign Up
+                  </button>
+                </SignUpButton>
+              </SignedOut>
+              <SignedIn>
+                <UserButton />
+              </SignedIn>
+            </header>
+            <div className="flex flex-1 overflow-hidden">
+              <main className="flex-1 p-4 overflow-auto">{children}</main>
+            </div>
+          </body>
+        </html>
+      </HomeProvider>
     </ClerkProvider>
   );
 }

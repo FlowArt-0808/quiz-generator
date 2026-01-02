@@ -1,10 +1,22 @@
 "use client";
 
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import {
+  useState,
+  createContext,
+  useContext,
+  useEffect,
+  type ReactNode,
+} from "react";
 
 import axios from "axios";
 
-type HomeContextType = { getArticleData: () => Promise<void> };
+type HomeContextType = {
+  isGenerated: boolean;
+  loading: boolean;
+  setLoading: (value: boolean) => void;
+  setIsGenerated: (value: boolean) => void;
+  getArticleData: () => Promise<void>;
+};
 
 const HomeContext = createContext<HomeContextType | undefined>(undefined);
 
@@ -18,6 +30,9 @@ export const useHomeContext = () => {
 };
 
 export const HomeProvider = ({ children }: { children: ReactNode }) => {
+  const [isGenerated, setIsGenerated] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const getArticleData = async () => {
     try {
       const response = await axios.get(
@@ -35,7 +50,15 @@ export const HomeProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <HomeContext.Provider value={{ getArticleData }}>
+    <HomeContext.Provider
+      value={{
+        getArticleData,
+        loading,
+        isGenerated,
+        setLoading,
+        setIsGenerated,
+      }}
+    >
       {children}
     </HomeContext.Provider>
   );
