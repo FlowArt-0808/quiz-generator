@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import {
-  ClerkProvider,
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from "@clerk/nextjs";
+import { ClerkProvider, SignedIn, UserButton } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Inter } from "next/font/google";
 import { HomeProvider } from "./_provider/homeProvider";
-import AppSidebar from "@/app/app-sidebar";
+import AuthButtons from "@/components/ui/AuthButtons";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -48,20 +42,13 @@ export default function RootLayout({
             <header className="flex justify-end items-center p-4 gap-4 h-16 bg-white border-b flex-shrink-0">
               <h1>Quiz app</h1>
               <div className="flex-1" />
-              <SignedOut>
-                <SignInButton />
-                <SignUpButton>
-                  <button className="bg-[#6c47ff] text-ceramic-white rounded-full font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 cursor-pointer">
-                    Sign Up
-                  </button>
-                </SignUpButton>
-              </SignedOut>
+              <AuthButtons />
               <SignedIn>
                 <UserButton />
               </SignedIn>
             </header>
             <div className="flex flex-1 overflow-hidden">
-              <main className="flex-1 p-4 overflow-auto">{children}</main>
+              <main className="flex-1  overflow-auto">{children}</main>
             </div>
           </body>
         </html>
@@ -69,7 +56,6 @@ export default function RootLayout({
     </ClerkProvider>
   );
 }
-
 // return (
 //   <ClerkProvider>
 //     <html lang="en">
