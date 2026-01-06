@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import axios from "axios";
+import { error } from "console";
 
 type HomeContextType = {
   isGenerated: boolean;
@@ -35,18 +36,30 @@ export const HomeProvider = ({ children }: { children: ReactNode }) => {
 
   const getArticleData = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:8888/api/routes/article"
-      );
-      const data = await response.data;
-      console.log(data);
+      const response = await axios.get("/api/routes/article");
+      console.log("Article Data Success:", response.data);
     } catch (err) {
-      console.error(err);
+      if (axios.isAxiosError(err)) {
+        console.error("Error status:", err.response?.status);
+        console.error("Error data:", err.response?.data);
+        console.error("Error message:", err.message);
+      } else {
+        console.error("Unexpected error:", err);
+      }
+    }
+  };
+
+  const getUserData = async () => {
+    try {
+      const response = await axios.get("/api/routes/user");
+      console.log(`Obtained User Data Successfully:`, response.data);
+    } catch (err) {
+      console.log(`getUserData error:`, err);
     }
   };
 
   useEffect(() => {
-    void getArticleData();
+    void getArticleData(), void getUserData();
   }, []);
 
   return (

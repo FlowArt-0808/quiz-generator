@@ -4,7 +4,10 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
 
 import axios from "axios";
 
-type QuizContextType = { getQuizData: () => Promise<void> };
+type QuizContextType = {
+  getQuizData: () => Promise<void>;
+  getUserData: () => Promise<void>;
+};
 
 const QuizContext = createContext<QuizContextType | undefined>(undefined);
 
@@ -28,12 +31,22 @@ export const QuizProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const getUserData = async () => {
+    try {
+      const response = await axios.get("http://localhost:8888/api/routes/user");
+      const data = response.data;
+      console.log(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    void getQuizData();
+    void getQuizData(), void getUserData();
   }, []);
 
   return (
-    <QuizContext.Provider value={{ getQuizData }}>
+    <QuizContext.Provider value={{ getQuizData, getUserData }}>
       {children}
     </QuizContext.Provider>
   );

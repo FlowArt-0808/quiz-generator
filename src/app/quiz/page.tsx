@@ -6,8 +6,10 @@ import SparkleIcon from "@/components/ui/sparkle-icon";
 import { Button } from "@/components/ui/button";
 import Answers from "../_components/answers";
 import AppSidebar from "../app-sidebar";
+import { useQuizContext } from "../_provider/quizProvider";
 
 const Quiz = () => {
+  const {} = useQuizContext();
   const [dummyTitles, setDummyTitles] = useState({
     questionOne: `Question 1`,
     questionTwo: `Question 2`,
@@ -50,7 +52,7 @@ const Quiz = () => {
               </span>
             </h1>
           </div>
-          <Answers />
+          <Answers />,
         </div>
       </div>
     </div>

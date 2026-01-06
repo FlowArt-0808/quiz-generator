@@ -24,7 +24,7 @@ export function AppSidebar() {
         <div className="p-4">
           <h2 className="font-bold mb-4">History</h2>
           <nav className="space-y-2">
-            <Link href="/home" className="block p-2 hover:bg-gray-100 rounded">
+            <Link href="/" className="block p-2 hover:bg-gray-100 rounded">
               Home
             </Link>
             <Link href="/quiz" className="block p-2 hover:bg-gray-100 rounded">
