@@ -5,7 +5,6 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   env: {
     DATABASE_URL: process.env.DATABASE_URL || "",
-    CLERK_WEBHOOK_SECRET: process.env.CLERK_WEBHOOK_SECRET || "",
   },
 };
 

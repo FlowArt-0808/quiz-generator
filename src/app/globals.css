@@ -1,11 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-body {
-  background-color: var(--border);
-  height: 100vh;
-}
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -49,6 +44,10 @@ body {
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+}
+
+body {
+  font-family: var(--font-inter);
 }
 
 :root {
@@ -127,4 +126,39 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+[data-slot="sheet-overlay"] {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+/* FORCE sidebar to stay in layout */
+aside[data-sidebar] {
+  position: static !important;
+  height: 100% !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+}
+
+/* Completely hide when collapsed */
+[data-state="collapsed"][data-sidebar] {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+[data-state="collapsed"][data-sidebar] * {
+  display: none !important;
+}
+
+/* Show when expanded */
+[data-state="expanded"][data-sidebar] {
+  width: 16rem !important;
+  min-width: 16rem !important;
 }

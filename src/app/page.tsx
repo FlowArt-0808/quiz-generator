@@ -1,169 +1,88 @@
 "use client";
 
-import { useState } from "react";
-import CreateArcticle from "./_components/CreateArcticle";
-import SummarizedContent from "./_components/SummarizedContent";
-import Quiz from "./_components/Quiz";
-import QuizAnswers from "./_components/QuizAnswers";
-import { AppSidebar } from "./_features/app-sidebar";
-import StarIcon from "@/app/_icons/StarIcon";
-import XIcon from "./_icons/XIcon";
-import { CardDescription, CardTitle } from "@/components/ui/card";
+import SparkleIcon from "@/components/ui/sparkle-icon";
 
-type Question = {
-  question: string;
-  options: string[];
-  answer: string;
-};
+import { useHomeContext } from "./_provider/homeProvider";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import FileIcon from "@/components/ui/file-icon";
+import AppSidebar from "./app-sidebar";
 
-type UserAnswer = {
-  question: string;
-  userAnswer: string;
-  correctAnswer: string;
-  isCorrect: boolean;
-};
-
-export default function Home() {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [summary, setSummary] = useState("");
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<UserAnswer[]>([]);
-  const [score, setScore] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const [view, setView] = useState<"create" | "summary" | "quiz" | "answers">(
-    "create"
-  );
-
-  const handleSaveAndLeave = async () => {
-    if (isSaving) return;
-
-    try {
-      setIsSaving(true);
-
-      await fetch("/api/save-and-leave", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title,
-          content,
-          summary,
-          quizzes: questions,
-        }),
-      });
-
-      setView("summary");
-    } catch (err) {
-      console.error("Save & Leave failed", err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+const Home = () => {
+  const { loading, setLoading, isGenerated } = useHomeContext();
 
   return (
-    <div className="h-full w-full grid md:grid-cols-[auto_1fr]">
-      <div className="border-r">
-        <AppSidebar />
-      </div>
+    <div className="w-screen flex justify-center items-center">
+      {" "}
+      <AppSidebar />
+      <div className="p-7 border-[#E4E4E7] border rounded-lg flex flex-col gap-5 w-fit">
+        <div
+          className="flex flex-col gap-2
+        "
+        ></div>
+        <div className="flex gap-2 items-center">
+          {" "}
+          <SparkleIcon />
+          <h1 className="">Article Quiz Generator </h1>
+        </div>
 
-      <div className="flex flex-col items-center justify-center">
-        {/* CREATE */}
-        {view === "create" && (
-          <CreateArcticle
-            title={title}
-            content={content}
-            setTitle={setTitle}
-            setContent={setContent}
-            onGenerated={(s) => {
-              setSummary(s);
-              setView("summary");
-            }}
-          />
-        )}
-
-        {/* SUMMARY */}
-        {view === "summary" && (
-          <SummarizedContent
-            title={title}
-            summary={summary}
-            content={content}
-            onBack={() => setView("create")}
-            onQuiz={async () => {
-              const res = await fetch("/api/quizs", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ summary }),
-              });
-              const data = await res.json();
-              if (data.success) {
-                setQuestions(data.quizzes);
-                setAnswers([]);
-                setScore(0);
-                setView("quiz");
-              }
-            }}
-          />
-        )}
-
-        {/* QUIZ */}
-        {view === "quiz" && (
-          <div className="flex flex-col gap-6">
-            <div className="flex justify-between">
-              <div>
-                <div className="flex gap-2 items-center">
-                  <StarIcon />
-                  <CardTitle>Quick test</CardTitle>
-                </div>
-                <CardDescription>
-                  Take a quick test about your content
-                </CardDescription>
-              </div>
-
-              <div
-                onClick={() => setView("summary")}
-                className="w-12 h-10 border rounded-md flex items-center justify-center cursor-pointer"
-              >
-                <XIcon />
-              </div>
-            </div>
-
-            <Quiz
-              questions={questions}
-              onFinish={(result) => {
-                setAnswers(result.answers);
-                setScore(result.score);
-                setView("answers");
-              }}
-            />
+        <p className="text-[#71717A] text-[16px]">
+          Paste your article below to generate a summarize and quiz question.
+          Your articles will saved in the sidebar for future reference.
+        </p>
+        <div className="flex flex-col gap-1">
+          <div className="flex gap-2 items-center">
+            {" "}
+            <FileIcon />
+            <h2 className="text-[#71717A] text-[14px] font-semibold">
+              Article Title
+            </h2>
           </div>
-        )}
-
-        {/* ANSWERS */}
-        {view === "answers" && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <div className="flex gap-2 items-center">
-                <StarIcon />
-                <CardTitle>Quick test</CardTitle>
-              </div>
-              <CardDescription>
-                Take a quick test about your content
-              </CardDescription>
-            </div>
-            <QuizAnswers
-              score={score}
-              total={questions.length}
-              answers={answers}
-              onRestart={() => setView("quiz")}
-              onLeave={handleSaveAndLeave}
-              isSaving={false}
-            />
+          <Input placeholder="Enter a title for your article" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <div className="flex gap-2 items-center">
+            {" "}
+            <FileIcon />
+            <h2 className="text-[#71717A] text-[14px] font-semibold">
+              Article Content
+            </h2>
           </div>
+          <Textarea
+            className="h-30"
+            placeholder="Enter a title for your article"
+          />
+        </div>
+
+        {loading ? (
+          <Button
+            className={`text-[#FFFF] flex items-center justify-center py-2 px-4 h-10 w-fit self-end 
+        `}
+          >
+            Generating summary...
+          </Button>
+        ) : isGenerated ? (
+          <Button
+            className={`text-[#FFFF] flex items-center justify-center py-2 px-4 h-10 w-fit self-end  cursor-pointer"
+            } hover:opacity-100
+        `}
+          >
+            Take a quiz
+          </Button>
+        ) : (
+          <Button
+            className={`text-[#FFFF] flex items-center justify-center py-2 px-4 h-10 w-fit self-end ${
+              loading ? "opacity-100" : "opacity-20 cursor-pointer"
+            } hover:opacity-100
+        `}
+          >
+            Generate summary
+          </Button>
         )}
       </div>
     </div>
   );
-}
+};
+
+export default Home;
