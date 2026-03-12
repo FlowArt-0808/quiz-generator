@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
 
 import prisma from "../../../../lib/prisma";
@@ -36,7 +36,7 @@ function getDisplayName(input: {
   return input.email.split("@")[0] || "Clerk User";
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   if (!process.env.CLERK_WEBHOOK_SIGNING_SECRET) {
     return NextResponse.json(
       { ok: false, error: "CLERK_WEBHOOK_SIGNING_SECRET is not configured." },
