@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import SparkleIcon from "@/components/ui/sparkle-icon";
 
 import { useHomeContext } from "./_provider/homeProvider";
@@ -7,16 +9,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import FileIcon from "@/components/ui/file-icon";
-import AppSidebar from "./app-sidebar";
 
 const Home = () => {
-  const { loading, setLoading, isGenerated } = useHomeContext();
+  const router = useRouter();
+  const {
+    articleContent,
+    articleTitle,
+    currentArticleId,
+    error,
+    generateSummary,
+    isGenerated,
+    loading,
+    questionCount,
+    setArticleContent,
+    setArticleTitle,
+    summary,
+  } = useHomeContext();
+  const canGenerate =
+    articleTitle.trim().length > 0 && articleContent.trim().length > 0;
 
   return (
-    <div className="w-screen flex justify-center items-center">
-      {" "}
-      <AppSidebar />
-      <div className="p-7 border-[#E4E4E7] border rounded-lg flex flex-col gap-5 w-fit">
+    <div className="flex min-h-full w-full items-center justify-center p-6 md:p-10">
+      <div className="flex w-full max-w-3xl flex-col gap-5 rounded-2xl border border-[#E4E4E7] bg-white p-7 shadow-sm">
         <div
           className="flex flex-col gap-2
         "
@@ -39,7 +53,11 @@ const Home = () => {
               Article Title
             </h2>
           </div>
-          <Input placeholder="Enter a title for your article" />
+          <Input
+            placeholder="Enter a title for your article"
+            value={articleTitle}
+            onChange={(event) => setArticleTitle(event.target.value)}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <div className="flex gap-2 items-center">
@@ -50,36 +68,73 @@ const Home = () => {
             </h2>
           </div>
           <Textarea
-            className="h-30"
-            placeholder="Enter a title for your article"
+            className="min-h-48"
+            placeholder="Paste your article content"
+            value={articleContent}
+            onChange={(event) => setArticleContent(event.target.value)}
           />
         </div>
 
+        {error ? (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
+
+        {summary ? (
+          <div className="rounded-2xl border border-[#E4E4E7] bg-[#FAFAFA] p-5">
+            <div className="flex items-center gap-2">
+              <SparkleIcon />
+              <h2 className="text-lg font-semibold">Generated summary</h2>
+            </div>
+            <p className="mt-4 whitespace-pre-line text-sm leading-6 text-[#3F3F46]">
+              {summary}
+            </p>
+          </div>
+        ) : null}
+
         {loading ? (
           <Button
-            className={`text-[#FFFF] flex items-center justify-center py-2 px-4 h-10 w-fit self-end 
-        `}
+            disabled
+            className="h-10 w-fit self-end px-4 py-2 text-[#FFFF]"
           >
             Generating summary...
           </Button>
         ) : isGenerated ? (
-          <Button
-            className={`text-[#FFFF] flex items-center justify-center py-2 px-4 h-10 w-fit self-end  cursor-pointer"
-            } hover:opacity-100
-        `}
-          >
-            Take a quiz
-          </Button>
+          <div className="flex items-center gap-3 self-end">
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => void generateSummary()}
+            >
+              Generate again
+            </Button>
+            <Button
+              className="h-10 w-fit cursor-pointer px-4 py-2 text-[#FFFF] hover:opacity-100"
+              onClick={() =>
+                router.push(
+                  currentArticleId ? `/quiz?articleId=${currentArticleId}` : "/quiz"
+                )
+              }
+            >
+              Take a quiz
+            </Button>
+          </div>
         ) : (
           <Button
-            className={`text-[#FFFF] flex items-center justify-center py-2 px-4 h-10 w-fit self-end ${
-              loading ? "opacity-100" : "opacity-20 cursor-pointer"
-            } hover:opacity-100
-        `}
+            disabled={!canGenerate}
+            className="h-10 w-fit self-end px-4 py-2 text-[#FFFF] hover:opacity-100"
+            onClick={() => void generateSummary()}
           >
             Generate summary
           </Button>
         )}
+
+        {isGenerated && questionCount > 0 ? (
+          <p className="text-sm text-[#71717A]">
+            {questionCount} quiz questions are ready for this article.
+          </p>
+        ) : null}
       </div>
     </div>
   );

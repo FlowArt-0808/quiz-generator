@@ -1,26 +1,38 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-const Answers = () => {
-  const [dummyAnswers, setDummyAnswers] = useState({
-    answerOne: `Answer 1`,
-    answerTwo: `Answer 2`,
-    answerThree: `Answer 3`,
-    answerFour: `Answer 4`,
-  });
+type AnswersProps = {
+  disabled?: boolean;
+  onSelect: (answer: string) => void;
+  options: string[];
+  selectedAnswer: string | null;
+};
+
+const Answers = ({
+  disabled = false,
+  onSelect,
+  options,
+  selectedAnswer,
+}: AnswersProps) => {
   return (
-    <div className="grid grid-cols-2 grid-rows-2 gap-4">
-      {Object.entries(dummyAnswers).map(([key, value]) => (
-        <Button
-          variant="outline"
-          className="px-4 py-2 h-10 flex items-center justify-center cursor-pointer"
-          key={key}
-        >
-          {value}
-        </Button>
-      ))}
+    <div className="grid gap-4 md:grid-cols-2">
+      {options.map((option) => {
+        const isSelected = selectedAnswer === option;
+
+        return (
+          <Button
+            key={option}
+            type="button"
+            variant={isSelected ? "default" : "outline"}
+            className="min-h-14 cursor-pointer justify-start whitespace-normal px-4 py-3 text-left"
+            disabled={disabled}
+            onClick={() => onSelect(option)}
+          >
+            {option}
+          </Button>
+        );
+      })}
     </div>
   );
 };

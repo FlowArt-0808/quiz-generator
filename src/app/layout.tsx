@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Inter } from "next/font/google";
 import { HomeProvider } from "./_provider/homeProvider";
 import AuthButtons from "@/components/ui/AuthButtons";
+import AppSidebar from "./app-sidebar";
 
 import "./globals.css";
 
@@ -37,9 +38,9 @@ export default function RootLayout({
       <HomeProvider>
         <html lang="en">
           <body
-            className={` ${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased flex flex-col h-screen`}
+            className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} flex min-h-screen flex-col antialiased`}
           >
-            <header className="flex justify-end items-center p-4 gap-4 h-16 bg-white border-b flex-shrink-0">
+            <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b bg-white px-4">
               <h1>Quiz app</h1>
               <div className="flex-1" />
               <AuthButtons />
@@ -48,7 +49,10 @@ export default function RootLayout({
               </SignedIn>
             </header>
             <div className="flex flex-1 overflow-hidden">
-              <main className="flex-1  overflow-auto">{children}</main>
+              <AppSidebar />
+              <main className="flex-1 overflow-auto bg-[#FAFAFA]">
+                {children}
+              </main>
             </div>
           </body>
         </html>

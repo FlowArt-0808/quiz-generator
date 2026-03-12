@@ -1,7 +1,5 @@
-import { QuizProvider } from "../_provider/quizProvider";
-
 const QuizLayout = ({ children }: Readonly<{ children: React.ReactNode }>) => {
-  return <QuizProvider>{children}</QuizProvider>;
+  return <>{children}</>;
 };
 
 export default QuizLayout;
