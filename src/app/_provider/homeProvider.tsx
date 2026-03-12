@@ -8,15 +8,16 @@ import {
   type ReactNode,
 } from "react";
 
+import { useUser } from "@clerk/nextjs";
 import axios from "axios";
 
-import {
-  getCurrentArticleId,
-  getSavedArticle,
-  saveArticle,
-  setCurrentArticleId,
-  type SavedArticle,
-} from "@/lib/article-store";
+import type { SavedArticle, SavedArticleListItem } from "@/lib/article-types";
+
+type ApiResponse<T> = {
+  data?: T;
+  error?: string;
+  ok?: boolean;
+};
 
 type HomeContextType = {
   articleContent: string;
@@ -25,28 +26,20 @@ type HomeContextType = {
   error: string | null;
   generateSummary: () => Promise<void>;
   isGenerated: boolean;
-  loadSavedArticle: (articleId: string) => void;
+  loadSavedArticle: (articleId: string) => Promise<void>;
   loading: boolean;
   questionCount: number;
+  refreshSavedArticles: () => Promise<void>;
+  savedArticles: SavedArticleListItem[];
+  savedArticlesLoading: boolean;
   setArticleContent: (value: string) => void;
   setArticleTitle: (value: string) => void;
   summary: string;
 };
 
-type SummaryResponse = {
-  data?: {
-    questions?: Array<{
-      answer: string;
-      options: string[];
-      question: string;
-    }>;
-    summary?: string;
-  };
-};
-
 const HomeContext = createContext<HomeContextType | undefined>(undefined);
 
-function mapArticleToState(article: SavedArticle) {
+function applyArticleToState(article: SavedArticle) {
   return {
     articleContent: article.content,
     articleTitle: article.title,
@@ -68,6 +61,7 @@ export const useHomeContext = () => {
 };
 
 export const HomeProvider = ({ children }: { children: ReactNode }) => {
+  const { isLoaded, isSignedIn, user } = useUser();
   const [articleTitle, setArticleTitleState] = useState("");
   const [articleContent, setArticleContentState] = useState("");
   const [summary, setSummary] = useState("");
@@ -78,29 +72,61 @@ export const HomeProvider = ({ children }: { children: ReactNode }) => {
   const [currentArticleId, setCurrentArticleIdState] = useState<string | null>(
     null
   );
+  const [savedArticles, setSavedArticles] = useState<SavedArticleListItem[]>([]);
+  const [savedArticlesLoading, setSavedArticlesLoading] = useState(true);
+
+  const clearSelectedArticleState = () => {
+    setCurrentArticleIdState(null);
+    setIsGenerated(false);
+    setQuestionCount(0);
+    setSummary("");
+  };
+
+  const resetEditorState = () => {
+    setArticleTitleState("");
+    setArticleContentState("");
+    clearSelectedArticleState();
+    setError(null);
+  };
+
+  const refreshSavedArticles = async () => {
+    if (!isSignedIn || !user?.id) {
+      setSavedArticles([]);
+      setSavedArticlesLoading(false);
+      return;
+    }
+
+    setSavedArticlesLoading(true);
+
+    try {
+      const response = await axios.get<ApiResponse<SavedArticleListItem[]>>(
+        "/api/routes/article"
+      );
+
+      setSavedArticles(
+        Array.isArray(response.data?.data) ? response.data.data : []
+      );
+    } catch {
+      setSavedArticles([]);
+    } finally {
+      setSavedArticlesLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const articleId = getCurrentArticleId();
-
-    if (!articleId) {
+    if (!isLoaded) {
       return;
     }
 
-    const article = getSavedArticle(articleId);
-
-    if (!article) {
+    if (!isSignedIn || !user?.id) {
+      setSavedArticles([]);
+      setSavedArticlesLoading(false);
+      resetEditorState();
       return;
     }
 
-    const nextState = mapArticleToState(article);
-
-    setArticleTitleState(nextState.articleTitle);
-    setArticleContentState(nextState.articleContent);
-    setSummary(nextState.summary);
-    setIsGenerated(nextState.isGenerated);
-    setQuestionCount(nextState.questionCount);
-    setCurrentArticleIdState(nextState.currentArticleId);
-  }, []);
+    void refreshSavedArticles();
+  }, [isLoaded, isSignedIn, user?.id]);
 
   const resetGeneratedState = (clearCurrentArticleId: boolean) => {
     setError(null);
@@ -123,23 +149,48 @@ export const HomeProvider = ({ children }: { children: ReactNode }) => {
     resetGeneratedState(true);
   };
 
-  const loadSavedArticle = (articleId: string) => {
-    const article = getSavedArticle(articleId);
-
-    if (!article) {
+  const loadSavedArticle = async (articleId: string) => {
+    if (!articleId.trim()) {
       return;
     }
 
-    const nextState = mapArticleToState(article);
+    try {
+      const response = await axios.get<ApiResponse<SavedArticle>>(
+        "/api/routes/article",
+        {
+          params: {
+            articleId,
+          },
+        }
+      );
+      const article = response.data?.data;
 
-    setArticleTitleState(nextState.articleTitle);
-    setArticleContentState(nextState.articleContent);
-    setSummary(nextState.summary);
-    setIsGenerated(nextState.isGenerated);
-    setQuestionCount(nextState.questionCount);
-    setCurrentArticleIdState(nextState.currentArticleId);
-    setCurrentArticleId(article.id);
-    setError(null);
+      if (!article) {
+        throw new Error("The saved article could not be found.");
+      }
+
+      const nextState = applyArticleToState(article);
+
+      setArticleTitleState(nextState.articleTitle);
+      setArticleContentState(nextState.articleContent);
+      setSummary(nextState.summary);
+      setIsGenerated(nextState.isGenerated);
+      setQuestionCount(nextState.questionCount);
+      setCurrentArticleIdState(nextState.currentArticleId);
+      setError(null);
+    } catch (err) {
+      clearSelectedArticleState();
+
+      if (axios.isAxiosError(err)) {
+        setError(
+          err.response?.data?.error || err.message || "Failed to load the article."
+        );
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to load the article.");
+      }
+    }
   };
 
   const generateSummary = async () => {
@@ -156,45 +207,29 @@ export const HomeProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const response = await axios.post<SummaryResponse>("/api/routes/summary", {
-        title: trimmedTitle,
-        content: trimmedContent,
-      });
+      const response = await axios.post<ApiResponse<SavedArticle>>(
+        "/api/routes/summary",
+        {
+          articleId: currentArticleId,
+          content: trimmedContent,
+          title: trimmedTitle,
+        }
+      );
+      const article = response.data?.data;
 
-      const generatedSummary = response.data?.data?.summary;
-      const generatedQuestions = response.data?.data?.questions ?? [];
-
-      if (typeof generatedSummary !== "string" || !generatedSummary.trim()) {
+      if (!article) {
         throw new Error("The summary response was empty.");
       }
 
-      if (!generatedQuestions.length) {
-        throw new Error("The quiz questions could not be generated.");
-      }
+      const nextState = applyArticleToState(article);
 
-      const existingArticle = currentArticleId
-        ? getSavedArticle(currentArticleId)
-        : null;
-      const articleId = existingArticle?.id ?? crypto.randomUUID();
-      const savedArticle: SavedArticle = {
-        content: trimmedContent,
-        createdAt: existingArticle?.createdAt ?? new Date().toISOString(),
-        id: articleId,
-        lastAttempt: existingArticle?.lastAttempt ?? null,
-        questions: generatedQuestions.map((question, index) => ({
-          ...question,
-          id: existingArticle?.questions[index]?.id ?? crypto.randomUUID(),
-        })),
-        summary: generatedSummary.trim(),
-        title: trimmedTitle,
-      };
-
-      saveArticle(savedArticle);
-      setCurrentArticleId(articleId);
-      setCurrentArticleIdState(articleId);
-      setSummary(savedArticle.summary);
-      setQuestionCount(savedArticle.questions.length);
-      setIsGenerated(true);
+      setArticleTitleState(nextState.articleTitle);
+      setArticleContentState(nextState.articleContent);
+      setSummary(nextState.summary);
+      setIsGenerated(nextState.isGenerated);
+      setQuestionCount(nextState.questionCount);
+      setCurrentArticleIdState(nextState.currentArticleId);
+      await refreshSavedArticles();
     } catch (err) {
       setIsGenerated(false);
 
@@ -226,6 +261,9 @@ export const HomeProvider = ({ children }: { children: ReactNode }) => {
         loadSavedArticle,
         loading,
         questionCount,
+        refreshSavedArticles,
+        savedArticles,
+        savedArticlesLoading,
         setArticleContent,
         setArticleTitle,
         summary,

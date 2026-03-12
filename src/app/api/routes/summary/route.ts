@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { serializeSavedArticle } from "@/lib/server/article-data";
+import { getCurrentDbUser } from "@/lib/server/current-db-user";
+
+import prisma from "../../../../../lib/prisma";
+
 type GeminiPart = {
   text?: string;
 };
@@ -29,8 +34,16 @@ type GeneratedPayload = {
   summary: string;
 };
 
+type SummaryRequestBody = {
+  articleId?: string | null;
+  content?: string;
+  title?: string;
+};
+
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+
+export const runtime = "nodejs";
 
 function extractGeminiText(payload: GeminiResponse) {
   const text = payload.candidates
@@ -70,14 +83,14 @@ function parseGeneratedPayload(rawText: string): GeneratedPayload | null {
         .filter(
           (question) =>
             question.question &&
-            question.options.length >= 2 &&
+            question.options.length === 4 &&
             question.answer &&
             question.options.includes(question.answer)
         )
         .slice(0, 5)
     : [];
 
-  if (!summary || !questions.length) {
+  if (!summary || questions.length !== 5) {
     return null;
   }
 
@@ -87,9 +100,134 @@ function parseGeneratedPayload(rawText: string): GeneratedPayload | null {
   };
 }
 
+function unauthorizedResponse() {
+  return NextResponse.json(
+    { ok: false, error: "Sign in to generate and save articles." },
+    { status: 401 }
+  );
+}
+
+async function saveGeneratedArticle(input: {
+  articleId: string | null;
+  content: string;
+  questions: GeneratedQuestion[];
+  summary: string;
+  title: string;
+  userId: string;
+}) {
+  return prisma.$transaction(async (tx) => {
+    if (input.articleId) {
+      const existingArticle = await tx.article.findFirst({
+        where: {
+          id: input.articleId,
+          userId: input.userId,
+        },
+      });
+
+      if (existingArticle) {
+        await tx.quizAttempt.deleteMany({
+          where: {
+            quiz: {
+              articleId: existingArticle.id,
+            },
+          },
+        });
+        await tx.userScore.deleteMany({
+          where: {
+            quiz: {
+              articleId: existingArticle.id,
+            },
+          },
+        });
+        await tx.quiz.deleteMany({
+          where: {
+            articleId: existingArticle.id,
+          },
+        });
+
+        return tx.article.update({
+          data: {
+            content: input.content,
+            quizzes: {
+              create: input.questions.map((question) => ({
+                answer: question.answer,
+                options: question.options,
+                question: question.question,
+              })),
+            },
+            summary: input.summary,
+            title: input.title,
+          },
+          include: {
+            quizzes: {
+              include: {
+                quizAttempts: {
+                  select: {
+                    completedAt: true,
+                    score: true,
+                  },
+                  where: {
+                    userId: input.userId,
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: "asc",
+              },
+            },
+          },
+          where: {
+            id: existingArticle.id,
+          },
+        });
+      }
+    }
+
+    return tx.article.create({
+      data: {
+        content: input.content,
+        quizzes: {
+          create: input.questions.map((question) => ({
+            answer: question.answer,
+            options: question.options,
+            question: question.question,
+          })),
+        },
+        summary: input.summary,
+        title: input.title,
+        userId: input.userId,
+      },
+      include: {
+        quizzes: {
+          include: {
+            quizAttempts: {
+              select: {
+                completedAt: true,
+                score: true,
+              },
+              where: {
+                userId: input.userId,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
+      },
+    });
+  });
+}
+
 export async function POST(req: NextRequest) {
+  const dbUser = await getCurrentDbUser();
+
+  if (!dbUser) {
+    return unauthorizedResponse();
+  }
+
   try {
-    const { title, content } = await req.json();
+    const body = (await req.json()) as SummaryRequestBody;
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -99,15 +237,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (typeof title !== "string" || typeof content !== "string") {
+    if (typeof body.title !== "string" || typeof body.content !== "string") {
       return NextResponse.json(
         { ok: false, error: "Title and content must be strings." },
         { status: 400 }
       );
     }
 
-    const trimmedTitle = title.trim();
-    const trimmedContent = content.trim();
+    const articleId =
+      typeof body.articleId === "string" && body.articleId.trim()
+        ? body.articleId.trim()
+        : null;
+    const trimmedTitle = body.title.trim();
+    const trimmedContent = body.content.trim();
 
     if (!trimmedTitle || !trimmedContent) {
       return NextResponse.json(
@@ -181,9 +323,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const savedArticle = await saveGeneratedArticle({
+      articleId,
+      content: trimmedContent,
+      questions: generatedPayload.questions,
+      summary: generatedPayload.summary,
+      title: trimmedTitle,
+      userId: dbUser.id,
+    });
+
     return NextResponse.json({
       ok: true,
-      data: generatedPayload,
+      data: serializeSavedArticle(savedArticle),
     });
   } catch (err) {
     if (err instanceof Error && err.name === "TimeoutError") {

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import {
   FileText,
   History,
@@ -13,12 +14,7 @@ import {
 } from "lucide-react";
 
 import { useHomeContext } from "./_provider/homeProvider";
-import {
-  ARTICLE_STORAGE_EVENT,
-  getSavedArticles,
-  setCurrentArticleId,
-  type SavedArticle,
-} from "@/lib/article-store";
+import type { SavedArticleListItem } from "@/lib/article-types";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -35,13 +31,15 @@ const navigation = [
 ];
 
 type SidebarContentProps = {
-  articles: SavedArticle[];
+  articles: SavedArticleListItem[];
   compact?: boolean;
+  loading: boolean;
   onClose?: () => void;
   onOpenArticle: (articleId: string) => void;
   onOpenQuiz: (articleId: string) => void;
-  pathname: string;
   onToggle?: () => void;
+  pathname: string;
+  signedIn: boolean;
 };
 
 function formatSavedDate(value: string) {
@@ -54,11 +52,13 @@ function formatSavedDate(value: string) {
 function SidebarContent({
   articles,
   compact = false,
+  loading,
   onClose,
   onOpenArticle,
   onOpenQuiz,
-  pathname,
   onToggle,
+  pathname,
+  signedIn,
 }: SidebarContentProps) {
   return (
     <>
@@ -67,14 +67,14 @@ function SidebarContent({
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white">
             <History className="h-5 w-5" />
           </div>
-          {!compact && (
+          {!compact ? (
             <div>
               <p className="text-sm font-semibold text-[#18181B]">History</p>
               <p className="text-xs text-[#71717A]">
                 {articles.length} saved article{articles.length === 1 ? "" : "s"}
               </p>
             </div>
-          )}
+          ) : null}
         </div>
         {onToggle ? (
           <button
@@ -120,7 +120,7 @@ function SidebarContent({
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              {!compact && <span>{label}</span>}
+              {!compact ? <span>{label}</span> : null}
             </Link>
           );
         })}
@@ -135,6 +135,19 @@ function SidebarContent({
               </p>
               <p className="text-xs text-[#71717A]">saved</p>
             </div>
+          </div>
+        ) : loading ? (
+          <div className="rounded-2xl border border-dashed border-[#D4D4D8] bg-[#FAFAFA] p-4">
+            <p className="text-sm font-medium text-[#18181B]">Loading history...</p>
+          </div>
+        ) : !signedIn ? (
+          <div className="rounded-2xl border border-dashed border-[#D4D4D8] bg-[#FAFAFA] p-4">
+            <p className="text-sm font-medium text-[#18181B]">
+              Sign in to sync articles
+            </p>
+            <p className="mt-2 text-sm text-[#71717A]">
+              Saved articles and quiz history are now tied to the active account.
+            </p>
           </div>
         ) : articles.length ? (
           <div className="flex flex-col gap-3">
@@ -159,7 +172,7 @@ function SidebarContent({
                   <span className="text-xs text-[#71717A]">
                     {article.lastAttempt
                       ? `Last score ${article.lastAttempt.score}/${article.lastAttempt.total}`
-                      : `${article.questions.length} questions ready`}
+                      : `${article.questionCount} questions ready`}
                   </span>
                   <button
                     type="button"
@@ -190,25 +203,11 @@ function SidebarContent({
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { loadSavedArticle } = useHomeContext();
+  const { isLoaded, isSignedIn } = useUser();
+  const { loadSavedArticle, savedArticles, savedArticlesLoading } =
+    useHomeContext();
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([]);
-
-  useEffect(() => {
-    const syncArticles = () => {
-      setSavedArticles(getSavedArticles());
-    };
-
-    syncArticles();
-    window.addEventListener(ARTICLE_STORAGE_EVENT, syncArticles);
-    window.addEventListener("storage", syncArticles);
-
-    return () => {
-      window.removeEventListener(ARTICLE_STORAGE_EVENT, syncArticles);
-      window.removeEventListener("storage", syncArticles);
-    };
-  }, []);
 
   if (
     pathname.startsWith("/auth") ||
@@ -219,14 +218,12 @@ export function AppSidebar() {
   }
 
   const openArticle = (articleId: string) => {
-    loadSavedArticle(articleId);
-    setCurrentArticleId(articleId);
+    void loadSavedArticle(articleId);
     setMobileOpen(false);
     router.push("/");
   };
 
   const openQuiz = (articleId: string) => {
-    setCurrentArticleId(articleId);
     setMobileOpen(false);
     router.push(`/quiz?articleId=${articleId}`);
   };
@@ -242,10 +239,12 @@ export function AppSidebar() {
         <SidebarContent
           articles={savedArticles}
           compact={desktopCollapsed}
+          loading={!isLoaded || savedArticlesLoading}
           onOpenArticle={openArticle}
           onOpenQuiz={openQuiz}
-          pathname={pathname}
           onToggle={() => setDesktopCollapsed((current) => !current)}
+          pathname={pathname}
+          signedIn={Boolean(isSignedIn)}
         />
       </aside>
 
@@ -277,10 +276,12 @@ export function AppSidebar() {
       >
         <SidebarContent
           articles={savedArticles}
+          loading={!isLoaded || savedArticlesLoading}
           onClose={() => setMobileOpen(false)}
           onOpenArticle={openArticle}
           onOpenQuiz={openQuiz}
           pathname={pathname}
+          signedIn={Boolean(isSignedIn)}
         />
       </aside>
     </>

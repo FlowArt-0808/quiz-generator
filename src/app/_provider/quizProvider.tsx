@@ -1,21 +1,34 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-
 import {
-  getCurrentArticleId,
-  getSavedArticle,
-  saveQuizAttempt,
-  setCurrentArticleId,
-  type QuizAttemptResult,
-  type SavedArticle,
-} from "@/lib/article-store";
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+
+import axios from "axios";
+
+import { useHomeContext } from "./homeProvider";
+import type {
+  QuizAttemptResult,
+  QuizAttemptSummary,
+  SavedArticle,
+} from "@/lib/article-types";
+
+type ApiResponse<T> = {
+  data?: T;
+  error?: string;
+  ok?: boolean;
+};
 
 type QuizContextType = {
   article: SavedArticle | null;
   currentQuestionIndex: number;
+  error: string | null;
   goToPreviousQuestion: () => void;
-  lastAttempt: QuizAttemptResult | null;
+  lastAttempt: QuizAttemptSummary | null;
   loading: boolean;
   nextQuestion: () => void;
   result: QuizAttemptResult | null;
@@ -29,112 +42,9 @@ type QuizProviderProps = {
   children: ReactNode;
 };
 
-type QuizStateProviderProps = {
-  article: SavedArticle | null;
-  children: ReactNode;
-};
+type QuizSubmissionResponse = ApiResponse<QuizAttemptResult>;
 
 const QuizContext = createContext<QuizContextType | undefined>(undefined);
-
-function QuizStateProvider({ article, children }: QuizStateProviderProps) {
-  const [articleState, setArticleState] = useState(article);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>(
-    {}
-  );
-  const [result, setResult] = useState<QuizAttemptResult | null>(null);
-
-  const currentQuestion = articleState?.questions[currentQuestionIndex] ?? null;
-  const selectedAnswer = currentQuestion
-    ? selectedAnswers[currentQuestion.id] ?? null
-    : null;
-  const lastAttempt = result ?? articleState?.lastAttempt ?? null;
-
-  const selectAnswer = (answer: string) => {
-    if (!currentQuestion || result) {
-      return;
-    }
-
-    setSelectedAnswers((currentAnswers) => ({
-      ...currentAnswers,
-      [currentQuestion.id]: answer,
-    }));
-  };
-
-  const finishQuiz = () => {
-    if (!articleState) {
-      return;
-    }
-
-    const answers = articleState.questions.map((question) => {
-      const selected = selectedAnswers[question.id] ?? null;
-
-      return {
-        correctAnswer: question.answer,
-        isCorrect: selected === question.answer,
-        question: question.question,
-        questionId: question.id,
-        selectedAnswer: selected,
-      };
-    });
-    const score = answers.filter((answer) => answer.isCorrect).length;
-    const nextResult: QuizAttemptResult = {
-      answers,
-      completedAt: new Date().toISOString(),
-      score,
-      total: articleState.questions.length,
-    };
-    const updatedArticle = saveQuizAttempt(articleState.id, nextResult);
-
-    setResult(nextResult);
-
-    if (updatedArticle) {
-      setArticleState(updatedArticle);
-    }
-  };
-
-  const nextQuestion = () => {
-    if (!articleState || !currentQuestion || !selectedAnswer) {
-      return;
-    }
-
-    if (currentQuestionIndex >= articleState.questions.length - 1) {
-      finishQuiz();
-      return;
-    }
-
-    setCurrentQuestionIndex((currentIndex) => currentIndex + 1);
-  };
-
-  const goToPreviousQuestion = () => {
-    setCurrentQuestionIndex((currentIndex) => Math.max(0, currentIndex - 1));
-  };
-
-  const restartQuiz = () => {
-    setSelectedAnswers({});
-    setCurrentQuestionIndex(0);
-    setResult(null);
-  };
-
-  return (
-    <QuizContext.Provider
-      value={{
-        article: articleState,
-        currentQuestionIndex,
-        goToPreviousQuestion,
-        lastAttempt,
-        loading: false,
-        nextQuestion,
-        result,
-        restartQuiz,
-        selectAnswer,
-        selectedAnswer,
-      }}
-    >
-      {children}
-    </QuizContext.Provider>
-  );
-}
 
 export const useQuizContext = () => {
   const context = useContext(QuizContext);
@@ -147,20 +57,207 @@ export const useQuizContext = () => {
 };
 
 export const QuizProvider = ({ articleId, children }: QuizProviderProps) => {
-  const effectiveArticleId = articleId ?? getCurrentArticleId();
-  const article = effectiveArticleId ? getSavedArticle(effectiveArticleId) : null;
+  const { refreshSavedArticles } = useHomeContext();
+  const [article, setArticle] = useState<SavedArticle | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>(
+    {}
+  );
+  const [result, setResult] = useState<QuizAttemptResult | null>(null);
+  const [loading, setLoading] = useState(Boolean(articleId));
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!effectiveArticleId) {
+    let isCancelled = false;
+
+    if (!articleId) {
+      setArticle(null);
+      setCurrentQuestionIndex(0);
+      setSelectedAnswers({});
+      setResult(null);
+      setLoading(false);
+      setError(null);
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    const loadArticle = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await axios.get<ApiResponse<SavedArticle>>(
+          "/api/routes/article",
+          {
+            params: {
+              articleId,
+            },
+          }
+        );
+        const nextArticle = response.data?.data;
+
+        if (!nextArticle) {
+          throw new Error("The requested quiz could not be found.");
+        }
+
+        if (isCancelled) {
+          return;
+        }
+
+        setArticle(nextArticle);
+        setCurrentQuestionIndex(0);
+        setSelectedAnswers({});
+        setResult(null);
+      } catch (err) {
+        if (isCancelled) {
+          return;
+        }
+
+        setArticle(null);
+        setResult(null);
+
+        if (axios.isAxiosError(err)) {
+          setError(
+            err.response?.data?.error || err.message || "Failed to load the quiz."
+          );
+        } else if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("Failed to load the quiz.");
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadArticle();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [articleId]);
+
+  const currentQuestion = article?.questions[currentQuestionIndex] ?? null;
+  const selectedAnswer = currentQuestion
+    ? selectedAnswers[currentQuestion.id] ?? null
+    : null;
+  const lastAttempt =
+    result ??
+    article?.lastAttempt ??
+    null;
+
+  const selectAnswer = (answer: string) => {
+    if (!currentQuestion || result || loading) {
       return;
     }
 
-    setCurrentArticleId(effectiveArticleId);
-  }, [effectiveArticleId]);
+    setSelectedAnswers((currentAnswers) => ({
+      ...currentAnswers,
+      [currentQuestion.id]: answer,
+    }));
+  };
+
+  const finishQuiz = async () => {
+    if (!article) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.post<QuizSubmissionResponse>("/api/routes/quiz", {
+        answers: article.questions.map((question) => ({
+          questionId: question.id,
+          selectedAnswer: selectedAnswers[question.id] ?? null,
+        })),
+        articleId: article.id,
+      });
+      const nextResult = response.data?.data;
+
+      if (!nextResult) {
+        throw new Error("The quiz result could not be saved.");
+      }
+
+      setResult(nextResult);
+      setArticle((currentArticle) =>
+        currentArticle
+          ? {
+              ...currentArticle,
+              lastAttempt: {
+                completedAt: nextResult.completedAt,
+                score: nextResult.score,
+                total: nextResult.total,
+              },
+            }
+          : currentArticle
+      );
+      await refreshSavedArticles();
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(
+          err.response?.data?.error ||
+            err.message ||
+            "Failed to save the quiz result."
+        );
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to save the quiz result.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const nextQuestion = () => {
+    if (!article || !currentQuestion || !selectedAnswer || loading) {
+      return;
+    }
+
+    if (currentQuestionIndex >= article.questions.length - 1) {
+      void finishQuiz();
+      return;
+    }
+
+    setCurrentQuestionIndex((currentIndex) => currentIndex + 1);
+  };
+
+  const goToPreviousQuestion = () => {
+    if (loading) {
+      return;
+    }
+
+    setCurrentQuestionIndex((currentIndex) => Math.max(0, currentIndex - 1));
+  };
+
+  const restartQuiz = () => {
+    setSelectedAnswers({});
+    setCurrentQuestionIndex(0);
+    setResult(null);
+    setError(null);
+  };
 
   return (
-    <QuizStateProvider key={effectiveArticleId ?? "empty"} article={article}>
+    <QuizContext.Provider
+      value={{
+        article,
+        currentQuestionIndex,
+        error,
+        goToPreviousQuestion,
+        lastAttempt,
+        loading,
+        nextQuestion,
+        result,
+        restartQuiz,
+        selectAnswer,
+        selectedAnswer,
+      }}
+    >
       {children}
-    </QuizStateProvider>
+    </QuizContext.Provider>
   );
 };

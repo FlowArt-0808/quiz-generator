@@ -12,6 +12,7 @@ function QuizContent() {
   const {
     article,
     currentQuestionIndex,
+    error,
     goToPreviousQuestion,
     lastAttempt,
     loading,
@@ -22,7 +23,7 @@ function QuizContent() {
     selectedAnswer,
   } = useQuizContext();
 
-  if (loading) {
+  if (loading && !article) {
     return (
       <div className="flex min-h-full w-full justify-center p-6 md:p-10">
         <div className="w-full max-w-4xl rounded-2xl border border-[#E4E4E7] bg-white p-7 shadow-sm">
@@ -41,8 +42,8 @@ function QuizContent() {
             <h1 className="text-2xl font-semibold">No quiz ready yet</h1>
           </div>
           <p className="text-[#71717A]">
-            Generate a summary first so the app has an article and quiz to work
-            from.
+            {error ||
+              "Generate a summary first so the app has an article and quiz to work from."}
           </p>
           <Button className="w-fit" onClick={() => router.push("/")}>
             Go back home
@@ -173,6 +174,12 @@ function QuizContent() {
             </div>
           </div>
 
+          {error ? (
+            <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </p>
+          ) : null}
+
           <div className="mt-6">
             <Answers
               options={question.options}
@@ -184,13 +191,17 @@ function QuizContent() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
             <Button
               variant="outline"
-              disabled={currentQuestionIndex === 0}
+              disabled={currentQuestionIndex === 0 || loading}
               onClick={goToPreviousQuestion}
             >
               Previous
             </Button>
-            <Button disabled={!selectedAnswer} onClick={nextQuestion}>
-              {isLastQuestion ? "Finish quiz" : "Next question"}
+            <Button disabled={!selectedAnswer || loading} onClick={nextQuestion}>
+              {loading
+                ? "Saving..."
+                : isLastQuestion
+                  ? "Finish quiz"
+                  : "Next question"}
             </Button>
           </div>
         </div>
